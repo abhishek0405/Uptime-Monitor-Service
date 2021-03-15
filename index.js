@@ -1,7 +1,41 @@
+
 const http = require('http');
+const https = require('https');
 const url = require('url');
 const StringDecoder = require('string_decoder').StringDecoder;
-const server  = http.createServer(function(req,res){
+const config = require('./config');
+const fs = require('fs');
+//instantiate http server
+const httpServer  = http.createServer(function(req,res){
+   unifiedServer(req,res);
+})
+
+//instantiate https server
+
+let httpsServerOptions={
+    'key': fs.readFileSync('./https/key.pem'),
+    'cert':fs.readFileSync('./https/cert.pem')
+}
+const httpsServer  = https.createServer(httpsServerOptions,function(req,res){
+    unifiedServer(req,res);
+ })
+
+
+//start http server
+httpServer.listen(config.httpPort,()=>{
+    console.log(config.envName+" environment  server listening on port "+config.httpPort);
+})
+
+
+//start https server
+httpsServer.listen(config.httpsPort,()=>{
+    console.log(config.envName+" environment  server listening on port "+config.httpsPort);
+})
+
+
+//both http and https server logic
+
+let unifiedServer = function(req,res){
     var parsedURL = url.parse(req.url,true);//true to allow to use query string
     var method = req.method.toLowerCase();
     // the .replace used to get rid of leading or trailing slashes
@@ -35,7 +69,7 @@ const server  = http.createServer(function(req,res){
             'payload':buffer
 
         };
-
+        //calling the function
         chosenHandler(data,(statusCode,payload)=>{
             //defining the call back now
             statusCode = typeof(statusCode)=='number'?statusCode:200;
@@ -49,30 +83,19 @@ const server  = http.createServer(function(req,res){
             console.log('Returning the response: ',statusCode,payloadString);
         })
 
-        
-       
-        
-        
- 
-
     })
-    
-    
-})
+}
 
-server.listen(3000,()=>{
-    console.log("server listening on port 3000");
-})
+
 let handlers={}
 
-handlers.sample = function(data,callback){
-    //callback has status code and payload
-    callback(406,{'name':'sample'})
+handlers.ping = (data,callback)=>{
+    callback(200);
 }
 //not found handler
 handlers.notFound = function(data,callback){
     callback(404);
 }
 let router = {
-    'sample':handlers.sample
+    'ping':handlers.ping
 }
